@@ -1,34 +1,49 @@
-# MlkitDemo
+# Android 端侧 AI 学习路线
 
-轻量级 Android 应用，演示 Google ML Kit 的移动端机器学习能力，提供图像分类和中文文本识别功能。
+MlkitDemo - 基于 Google ML Kit 的移动端机器学习实践项目
 
-## 项目概览
+## 项目信息
 
-- **项目类型**: Android Application (Native Kotlin)
-- **包名**: com.cozyla.mlkitdemo
-- **语言**: 100% Kotlin
-- **架构**: Single-Activity Application
-- **构建系统**: Gradle 9.2.1
-- **Android SDK**: Min: 24 (Android 7.0), Target: 36
+| 属性 | 说明 |
+|------|------|
+| 项目类型 | Android Application (Native Kotlin) |
+| 包名 | com.cozyla.mlkitdemo |
+| 语言 | 100% Kotlin |
+| 架构 | Single-Activity |
+| minSdk | 24 (Android 7.0) |
+| targetSdk | 36 |
 
-## 学习目录
+## 学习路线
 
-| Day | 标题 | 文档 |
-|-----|------|------|
-| Day 1 | AI 移动端核心概念 | [docs/day1-core-concepts.md](docs/day1-core-concepts.md) |
-| Day 2 | 纯 Kotlin 实现离线 OCR 文字识别 | [docs/day2-text-recognition.md](docs/day2-text-recognition.md) |
-| Day 3 | 纯 Kotlin 离线图像分类 | [docs/day3-image-classification.md](docs/day3-image-classification.md) |
+### 第一阶段：基础入门
+- **Day 1**: [AI 移动端核心概念](docs/day1-core-concepts.md)
+  - 移动端 AI 优势
+  - Google ML Kit 简介
+  - 项目配置基础
 
-## ML Kit 功能
+### 第二阶段：OCR 文字识别
+- **Day 2**: [纯 Kotlin 实现离线 OCR 文字识别](docs/day2-text-recognition.md)
+  - 中文文本识别依赖配置
+  - 相册选择与图片处理
+  - ML Kit  TextRecognition API 使用
 
-1. **图像分类**
-   - API: `com.google.mlkit:image-labeling:17.0.9`
-   - 识别 1000+ 种对象类别及置信度
-   - 设备端离线运行
+### 第三阶段：图像分类
+- **Day 3**: [纯 Kotlin 离线图像分类](docs/day3-image-classification.md)
+  - 图像标注依赖配置
+  - 1000+ 类别识别
+  - 置信度输出与展示
 
-2. **中文文本识别**
-   - API: `com.google.mlkit:text-recognition-chinese:16.0.1`
-   - 从图像中提取中文文本
+## 功能特性
+
+| 功能 | 依赖库 | 版本 |
+|------|--------|------|
+| 中文 OCR | text-recognition-chinese | 16.0.1 |
+| 图像分类 | image-labeling | 17.0.9 |
+
+- ✅ 纯 Kotlin 实现
+- ✅ 零 NDK / 零 C++
+- ✅ 离线运行
+- ✅ 隐私安全
 
 ## 常用命令
 
@@ -46,16 +61,3 @@
 ./gradlew :app:installDebug
 adb shell am start -n com.cozyla.mlkitdemo/.MainActivity
 ```
-
-## 总结
-
-| 功能 | 依赖库 | 版本 |
-|------|--------|------|
-| 中文 OCR | text-recognition-chinese | 16.0.1 |
-| 图像分类 | image-labeling | 17.0.9 |
-
-**特点：**
-- ✅ 纯 Kotlin 实现
-- ✅ 零 NDK / 零 C++
-- ✅ 离线运行
-- ✅ 隐私安全
