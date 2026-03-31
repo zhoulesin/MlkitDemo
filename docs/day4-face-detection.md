@@ -7,7 +7,7 @@
 ```kotlin
 dependencies {
     // 人脸检测
-    implementation("com.google.mlkit:face-detection:16.1.5")
+    implementation("com.google.mlkit:face-detection:16.1.7")
 }
 ```
 

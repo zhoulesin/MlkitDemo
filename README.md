@@ -45,7 +45,7 @@ MlkitDemo - 基于 Google ML Kit 的移动端机器学习实践项目
 |------|--------|------|
 | 中文 OCR | text-recognition-chinese | 16.0.1 |
 | 图像分类 | image-labeling | 17.0.9 |
-| 人脸检测 | face-detection | 16.1.5 |
+| 人脸检测 | face-detection | 16.1.7 |
 
 - ✅ 纯 Kotlin 实现
 - ✅ 零 NDK / 零 C++
