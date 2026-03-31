@@ -122,3 +122,23 @@ class MainActivity : AppCompatActivity() {
 2. **构建 InputImage**：将 Bitmap 转换为 ML Kit 的 InputImage
 3. **异步处理**：`process()` 方法是异步的，通过回调获取结果
 4. **零 NDK/C++**：纯 Kotlin 实现，无需 JNI
+
+## 2.5 Claude Code 快速实现提示词
+
+将以下提示词复制给 Claude Code 即可自动实现中文文本识别功能：
+
+```
+在这个 Android 项目中实现 ML Kit 中文文本识别功能：
+
+1. 在 app/build.gradle.kts 中添加依赖：
+   implementation("com.google.mlkit:text-recognition-chinese:16.0.1")
+
+2. 在 activity_main.xml 中添加文本识别按钮，id 为 btn_recognize_text，以及结果显示 TextView，id 为 tv_result
+
+3. 在 MainActivity.kt 中：
+   - 添加 import：com.google.mlkit.vision.text.*
+   - 添加请求码 requestCodeTextRecognition = 100
+   - 实现打开相册的方法 openGallery()
+   - 在 onActivityResult 中获取图片并调用识别方法
+   - 实现 recognizeText() 方法，使用 ChineseTextRecognizerOptions 进行中文文本识别，输出识别结果或失败信息
+```

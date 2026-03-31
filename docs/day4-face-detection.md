@@ -180,3 +180,23 @@ dependencies {
     implementation("com.google.mlkit:face-detection:16.1.7")
 }
 ```
+
+## 4.6 Claude Code 快速实现提示词
+
+将以下提示词复制给 Claude Code 即可自动实现人脸检测功能：
+
+```
+在这个 Android 项目中实现 ML Kit 人脸检测功能：
+
+1. 在 app/build.gradle.kts 中添加依赖：
+   implementation("com.google.mlkit:face-detection:16.1.7")
+
+2. 在 activity_main.xml 中添加人脸检测按钮，id 为 btn_detect_face
+
+3. 在 MainActivity.kt 中：
+   - 添加 import：com.google.mlkit.vision.face.*
+   - 添加请求码 requestCodeFaceDetection = 102
+   - 在 onCreate 中绑定按钮并设置点击事件打开相册
+   - 在 onActivityResult 中添加人脸检测分支
+   - 实现 detectFace() 方法，使用精确模式、检测所有地标和分类，输出人脸数量、边界框、头部角度、微笑概率、眼睛状态
+```

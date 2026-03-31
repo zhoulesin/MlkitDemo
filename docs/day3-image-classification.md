@@ -140,3 +140,24 @@ dependencies {
     implementation("com.google.mlkit:image-labeling:17.0.9")
 }
 ```
+
+## 3.6 Claude Code 快速实现提示词
+
+将以下提示词复制给 Claude Code 即可自动实现图像分类功能：
+
+```
+在这个 Android 项目中实现 ML Kit 图像分类功能：
+
+1. 在 app/build.gradle.kts 中添加依赖：
+   implementation("com.google.mlkit:image-labeling:17.0.9")
+
+2. 在 activity_main.xml 中添加图像分类按钮，id 为 btn_classify_image
+
+3. 在 MainActivity.kt 中：
+   - 添加 import：com.google.mlkit.vision.label.*
+   - 添加请求码 requestCodeImageClassification = 101
+   - 在 onCreate 中绑定按钮并设置点击事件打开相册
+   - 在 onActivityResult 中添加图像分类分支
+   - 实现 classifyImage() 方法，使用 ImageLabelerOptions.DEFAULT_OPTIONS，输出类别名称和置信度
+```
+```

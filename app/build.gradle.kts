@@ -47,6 +47,7 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
 
 
+    //具体版本参考官网 https://developers.google.cn/ml-kit
     // To recognize Chinese script
     implementation("com.google.mlkit:text-recognition-chinese:16.0.1")
     // 图像分类
