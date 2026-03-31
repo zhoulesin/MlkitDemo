@@ -1,3 +1,34 @@
+# Day 4：ML Kit 人脸检测（纯 Kotlin，离线，零 NDK）
+
+## 4.1 依赖配置
+
+在 `app/build.gradle.kts` 中添加：
+
+```kotlin
+dependencies {
+    // 人脸检测
+    implementation("com.google.mlkit:face-detection:16.1.5")
+}
+```
+
+## 4.2 布局更新
+
+添加人脸检测按钮：
+
+```xml
+<Button
+    android:id="@+id/btn_detect_face"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="12dp"
+    android:text="检测人脸"/>
+```
+
+## 4.3 核心代码实现
+
+**MainActivity.kt - 人脸检测部分：**
+
+```kotlin
 package com.cozyla.mlkitdemo
 
 import android.content.Intent
@@ -8,36 +39,15 @@ import android.provider.MediaStore
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import com.google.mlkit.vision.label.ImageLabeling
-import com.google.mlkit.vision.label.defaults.ImageLabelerOptions
-import com.google.mlkit.vision.text.TextRecognition
-import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetectorOptions
 
-/**
- * 首页 - 图片文本识别、图像分类和人脸检测演示
- * 提供三个按钮分别进行中文文本识别、图像内容分类和人脸检测
- */
 class MainActivity : AppCompatActivity() {
 
-    /** 请求码：文本识别 */
     private val requestCodeTextRecognition = 100
-
-    /** 请求码：图像分类 */
     private val requestCodeImageClassification = 101
-
-    /** 请求码：人脸检测 */
     private val requestCodeFaceDetection = 102
-
-    /** TAG 用于日志 */
-    private val tag = this::class.java.simpleName
-
-    /** 结果显示文本控件 */
     private lateinit var tvResult: TextView
-
-    /** 当前识别模式 */
-    private var currentRequestCode = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,12 +71,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * 打开相册选择图片
-     * @param requestCode 请求码，用于区分识别类型
-     */
     private fun openGallery(requestCode: Int) {
-        currentRequestCode = requestCode
         val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
         startActivityForResult(intent, requestCode)
     }
@@ -86,60 +91,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * ML Kit 中文文本识别
-     * @param bitmap 待识别的图片
-     */
-    private fun recognizeText(bitmap: Bitmap) {
-        val recognizer = TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build())
-        val image = com.google.mlkit.vision.common.InputImage.fromBitmap(bitmap, 0)
-
-        recognizer.process(image)
-            .addOnSuccessListener { text ->
-                val resultText = text.text
-                tvResult.text = if (resultText.isEmpty()) {
-                    "未识别到文本"
-                } else {
-                    resultText
-                }
-            }
-            .addOnFailureListener { e ->
-                tvResult.text = "识别失败：${e.message}"
-            }
-    }
-
-
-    /**
-     * ML Kit 图像分类
-     * @param bitmap 待分类的图片
-     */
-    private fun classifyImage(bitmap: Bitmap) {
-        val labeler = ImageLabeling.getClient(ImageLabelerOptions.DEFAULT_OPTIONS)
-        val image = com.google.mlkit.vision.common.InputImage.fromBitmap(bitmap, 0)
-
-        labeler.process(image)
-            .addOnSuccessListener { labels ->
-                val sb = StringBuilder()
-                for (label in labels) {
-                    val name = label.text
-                    val confidence = label.confidence
-                    sb.append("类别：$name，置信度：${"%.2f".format(confidence)}\n")
-                }
-                tvResult.text = if (sb.isEmpty()) {
-                    "未识别到内容"
-                } else {
-                    sb.toString()
-                }
-            }
-            .addOnFailureListener { e ->
-                tvResult.text = "识别失败：${e.message}"
-            }
-    }
-
-    /**
-     * ML Kit 人脸检测
-     * @param bitmap 待检测的图片
-     */
     private fun detectFace(bitmap: Bitmap) {
         val options = FaceDetectorOptions.Builder()
             .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
@@ -157,18 +108,18 @@ class MainActivity : AppCompatActivity() {
                 for ((index, face) in faces.withIndex()) {
                     sb.append("人脸 ${index + 1}：\n")
                     sb.append("  边界：${face.boundingBox}\n")
-
+                    
                     face.headEulerAngleY?.let { sb.append("  左右转头角度：${"%.1f".format(it)}°\n") }
                     face.headEulerAngleZ?.let { sb.append("  上下点头角度：${"%.1f".format(it)}°\n") }
-
-                    face.smilingProbability?.let {
-                        sb.append("  微笑概率：${"%.2f".format(it)}\n")
+                    
+                    face.smilingProbability?.let { 
+                        sb.append("  微笑概率：${"%.2f".format(it)}\n") 
                     }
-                    face.leftEyeOpenProbability?.let {
-                        sb.append("  左眼睁开概率：${"%.2f".format(it)}\n")
+                    face.leftEyeOpenProbability?.let { 
+                        sb.append("  左眼睁开概率：${"%.2f".format(it)}\n") 
                     }
-                    face.rightEyeOpenProbability?.let {
-                        sb.append("  右眼睁开概率：${"%.2f".format(it)}\n")
+                    face.rightEyeOpenProbability?.let { 
+                        sb.append("  右眼睁开概率：${"%.2f".format(it)}\n") 
                     }
                     sb.append("\n")
                 }
@@ -182,4 +133,50 @@ class MainActivity : AppCompatActivity() {
                 tvResult.text = "检测失败：${e.message}"
             }
     }
+
+    private fun classifyImage(bitmap: Bitmap) {
+        // 同 Day 3 实现
+    }
+
+    private fun recognizeText(bitmap: Bitmap) {
+        // 同 Day 2 实现
+    }
 }
+```
+
+## 4.4 人脸检测能力
+
+- **检测功能**：人脸位置、头部姿态、微笑概率、眼睛睁开状态
+- **性能模式**：
+  - `PERFORMANCE_MODE_FAST` - 快速模式
+  - `PERFORMANCE_MODE_ACCURATE` - 精确模式
+- **地标模式**：
+  - `LANDMARK_MODE_NONE` - 不检测面部特征点
+  - `LANDMARK_MODE_ALL` - 检测眼睛、耳朵、鼻子、嘴巴等
+- **分类模式**：
+  - `CLASSIFICATION_MODE_NONE` - 不分类
+  - `CLASSIFICATION_MODE_ALL` - 微笑、眼睛状态分类
+
+## 4.5 完整依赖配置
+
+最终 `app/build.gradle.kts` 中的 dependencies：
+
+```kotlin
+dependencies {
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.appcompat)
+    implementation(libs.material)
+    implementation(libs.androidx.activity)
+    implementation(libs.androidx.constraintlayout)
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
+
+    // ML Kit - 中文文本识别
+    implementation("com.google.mlkit:text-recognition-chinese:16.0.1")
+    // ML Kit - 图像分类
+    implementation("com.google.mlkit:image-labeling:17.0.9")
+    // ML Kit - 人脸检测
+    implementation("com.google.mlkit:face-detection:16.1.7")
+}
+```

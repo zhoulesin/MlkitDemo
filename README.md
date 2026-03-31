@@ -33,12 +33,19 @@ MlkitDemo - 基于 Google ML Kit 的移动端机器学习实践项目
   - 1000+ 类别识别
   - 置信度输出与展示
 
+### 第四阶段：人脸检测
+- **Day 4**: [ML Kit 人脸检测](docs/day4-face-detection.md)
+  - 人脸检测依赖配置
+  - 人脸位置与边界框
+  - 头部姿态、微笑、眼睛状态检测
+
 ## 功能特性
 
 | 功能 | 依赖库 | 版本 |
 |------|--------|------|
 | 中文 OCR | text-recognition-chinese | 16.0.1 |
 | 图像分类 | image-labeling | 17.0.9 |
+| 人脸检测 | face-detection | 16.1.5 |
 
 - ✅ 纯 Kotlin 实现
 - ✅ 零 NDK / 零 C++

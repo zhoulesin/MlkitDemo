@@ -49,6 +49,8 @@ dependencies {
 
     // To recognize Chinese script
     implementation("com.google.mlkit:text-recognition-chinese:16.0.1")
-    // 👇 先只使用图像分类，确保能运行
+    // 图像分类
     implementation("com.google.mlkit:image-labeling:17.0.9")
+    // 人脸检测
+    implementation("com.google.mlkit:face-detection:16.1.7")
 }
