@@ -2,184 +2,158 @@ package com.cozyla.mlkitdemo
 
 import android.content.Intent
 import android.graphics.Bitmap
-import android.net.Uri
 import android.os.Bundle
-import android.provider.MediaStore
+import android.util.Log
 import android.widget.Button
+import android.widget.EditText
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import com.google.mlkit.vision.label.ImageLabeling
-import com.google.mlkit.vision.label.defaults.ImageLabelerOptions
-import com.google.mlkit.vision.text.TextRecognition
-import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions
-import com.google.mlkit.vision.face.FaceDetection
-import com.google.mlkit.vision.face.FaceDetectorOptions
+import androidx.lifecycle.lifecycleScope
+import com.cozyla.mlkitdemo.mlkit.FaceDetectionHelper
+import com.cozyla.mlkitdemo.mlkit.GalleryHelper
+import com.cozyla.mlkitdemo.mlkit.ImageLabelingHelper
+import com.cozyla.mlkitdemo.mlkit.TextRecognitionHelper
+import kotlinx.coroutines.launch
 
 /**
- * 首页 - 图片文本识别、图像分类和人脸检测演示
- * 提供三个按钮分别进行中文文本识别、图像内容分类和人脸检测
+ * 首页 - 图片文本识别、图像分类、人脸检测和火山引擎（豆包）聊天演示
  */
 class MainActivity : AppCompatActivity() {
 
-    /** 请求码：文本识别 */
-    private val requestCodeTextRecognition = 100
+    companion object {
+        private const val REQUEST_CODE_TEXT = 100
+        private const val REQUEST_CODE_IMAGE = 101
+        private const val REQUEST_CODE_FACE = 102
+        private const val TAG = "MainActivity"
+    }
 
-    /** 请求码：图像分类 */
-    private val requestCodeImageClassification = 101
-
-    /** 请求码：人脸检测 */
-    private val requestCodeFaceDetection = 102
-
-    /** TAG 用于日志 */
-    private val tag = this::class.java.simpleName
-
-    /** 结果显示文本控件 */
     private lateinit var tvResult: TextView
+    private lateinit var volcanoApi: VolcanoApiHelper
+    private lateinit var chatManager: ChatManager
 
-    /** 当前识别模式 */
+    private val galleryHelper by lazy { GalleryHelper(this) }
+    private val textRecognitionHelper by lazy { TextRecognitionHelper() }
+    private val imageLabelingHelper by lazy { ImageLabelingHelper() }
+    private val faceDetectionHelper by lazy { FaceDetectionHelper() }
+
     private var currentRequestCode = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val btnRecognizeText = findViewById<Button>(R.id.btn_recognize_text)
-        val btnClassifyImage = findViewById<Button>(R.id.btn_classify_image)
-        val btnDetectFace = findViewById<Button>(R.id.btn_detect_face)
-        tvResult = findViewById(R.id.tv_result)
-
-        btnRecognizeText.setOnClickListener {
-            openGallery(requestCodeTextRecognition)
-        }
-
-        btnClassifyImage.setOnClickListener {
-            openGallery(requestCodeImageClassification)
-        }
-
-        btnDetectFace.setOnClickListener {
-            openGallery(requestCodeFaceDetection)
-        }
+        initHelpers()
+        initViews()
     }
 
-    /**
-     * 打开相册选择图片
-     * @param requestCode 请求码，用于区分识别类型
-     */
-    private fun openGallery(requestCode: Int) {
-        currentRequestCode = requestCode
-        val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
-        startActivityForResult(intent, requestCode)
+    private fun initHelpers() {
+        chatManager = ChatManager(
+            maxHistoryChars = 64000,
+            systemPrompt = "你是豆包，是由字节跳动开发的 AI 助手。请用简洁、友好的语言回答问题。"
+        )
+
+        volcanoApi = VolcanoApiHelper(
+            apiKey = "1be8d665-1cc2-4eca-a0b5-e94a1a3b84f1",
+            model = "doubao-seed-2-0-lite-260215",
+            baseUrl = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
+        )
+    }
+
+    private fun initViews() {
+        tvResult = findViewById(R.id.tv_result)
+        val etMessage = findViewById<EditText>(R.id.et_message)
+        val tvChat = findViewById<TextView>(R.id.tv_chat)
+        val scrollChat = findViewById<ScrollView>(R.id.scroll_chat)
+
+        findViewById<Button>(R.id.btn_recognize_text).setOnClickListener {
+            galleryHelper.openGallery(REQUEST_CODE_TEXT)
+        }
+
+        findViewById<Button>(R.id.btn_classify_image).setOnClickListener {
+            galleryHelper.openGallery(REQUEST_CODE_IMAGE)
+        }
+
+        findViewById<Button>(R.id.btn_detect_face).setOnClickListener {
+            galleryHelper.openGallery(REQUEST_CODE_FACE)
+        }
+
+        findViewById<Button>(R.id.btn_send).setOnClickListener {
+            val message = etMessage.text.toString()
+            if (message.isNotEmpty()) {
+                sendMessage(message, tvChat, scrollChat)
+                etMessage.text.clear()
+            }
+        }
+
+        findViewById<Button>(R.id.btn_clear).setOnClickListener {
+            chatManager.clear()
+            updateChatDisplay(tvChat, scrollChat)
+        }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (resultCode == RESULT_OK) {
-            val uri: Uri? = data?.data
-            uri?.let {
-                val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, it)
-                when (requestCode) {
-                    requestCodeTextRecognition -> recognizeText(bitmap)
-                    requestCodeImageClassification -> classifyImage(bitmap)
-                    requestCodeFaceDetection -> detectFace(bitmap)
+        if (resultCode != RESULT_OK) return
+
+        val bitmap = galleryHelper.getBitmap(data) ?: return
+
+        when (requestCode) {
+            REQUEST_CODE_TEXT -> processText(bitmap)
+            REQUEST_CODE_IMAGE -> processImage(bitmap)
+            REQUEST_CODE_FACE -> processFace(bitmap)
+        }
+    }
+
+    private fun processText(bitmap: Bitmap) {
+        textRecognitionHelper.recognizeText(
+            bitmap = bitmap,
+            onSuccess = { tvResult.text = it },
+            onFailure = { tvResult.text = "识别失败：${it.message}" }
+        )
+    }
+
+    private fun processImage(bitmap: Bitmap) {
+        imageLabelingHelper.classifyImage(
+            bitmap = bitmap,
+            onSuccess = { tvResult.text = it },
+            onFailure = { tvResult.text = "识别失败：${it.message}" }
+        )
+    }
+
+    private fun processFace(bitmap: Bitmap) {
+        faceDetectionHelper.detectFace(
+            bitmap = bitmap,
+            onSuccess = { tvResult.text = it },
+            onFailure = { tvResult.text = "检测失败：${it.message}" }
+        )
+    }
+
+    private fun sendMessage(message: String, tvChat: TextView, scrollChat: ScrollView) {
+        chatManager.addMessage(role = "user", content = message)
+        updateChatDisplay(tvChat, scrollChat)
+
+        lifecycleScope.launch {
+            try {
+                val apiMessages = chatManager.getApiMessages().map {
+                    mapOf("role" to it.role, "content" to it.content)
                 }
+
+                val aiResponse = volcanoApi.chatNonStream(apiMessages)
+                chatManager.addMessage(role = "assistant", content = aiResponse)
+                updateChatDisplay(tvChat, scrollChat)
+
+            } catch (e: Exception) {
+                Log.e(TAG, "聊天请求异常", e)
+                val errorMsg = "出错了：${e.javaClass.simpleName}\n${e.message}\n\n请查看 Logcat 获取详细信息"
+                chatManager.addMessage(role = "assistant", content = errorMsg)
+                updateChatDisplay(tvChat, scrollChat)
             }
         }
     }
 
-    /**
-     * ML Kit 中文文本识别
-     * @param bitmap 待识别的图片
-     */
-    private fun recognizeText(bitmap: Bitmap) {
-        val recognizer = TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build())
-        val image = com.google.mlkit.vision.common.InputImage.fromBitmap(bitmap, 0)
-
-        recognizer.process(image)
-            .addOnSuccessListener { text ->
-                val resultText = text.text
-                tvResult.text = if (resultText.isEmpty()) {
-                    "未识别到文本"
-                } else {
-                    resultText
-                }
-            }
-            .addOnFailureListener { e ->
-                tvResult.text = "识别失败：${e.message}"
-            }
-    }
-
-
-    /**
-     * ML Kit 图像分类
-     * @param bitmap 待分类的图片
-     */
-    private fun classifyImage(bitmap: Bitmap) {
-        val labeler = ImageLabeling.getClient(ImageLabelerOptions.DEFAULT_OPTIONS)
-        val image = com.google.mlkit.vision.common.InputImage.fromBitmap(bitmap, 0)
-
-        labeler.process(image)
-            .addOnSuccessListener { labels ->
-                val sb = StringBuilder()
-                for (label in labels) {
-                    val name = label.text
-                    val confidence = label.confidence
-                    sb.append("类别：$name，置信度：${"%.2f".format(confidence)}\n")
-                }
-                tvResult.text = if (sb.isEmpty()) {
-                    "未识别到内容"
-                } else {
-                    sb.toString()
-                }
-            }
-            .addOnFailureListener { e ->
-                tvResult.text = "识别失败：${e.message}"
-            }
-    }
-
-    /**
-     * ML Kit 人脸检测
-     * @param bitmap 待检测的图片
-     */
-    private fun detectFace(bitmap: Bitmap) {
-        val options = FaceDetectorOptions.Builder()
-            .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
-            .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
-            .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
-            .build()
-
-        val detector = FaceDetection.getClient(options)
-        val image = com.google.mlkit.vision.common.InputImage.fromBitmap(bitmap, 0)
-
-        detector.process(image)
-            .addOnSuccessListener { faces ->
-                val sb = StringBuilder()
-                sb.append("检测到 ${faces.size} 张人脸\n\n")
-                for ((index, face) in faces.withIndex()) {
-                    sb.append("人脸 ${index + 1}：\n")
-                    sb.append("  边界：${face.boundingBox}\n")
-
-                    face.headEulerAngleY?.let { sb.append("  左右转头角度：${"%.1f".format(it)}°\n") }
-                    face.headEulerAngleZ?.let { sb.append("  上下点头角度：${"%.1f".format(it)}°\n") }
-
-                    face.smilingProbability?.let {
-                        sb.append("  微笑概率：${"%.2f".format(it)}\n")
-                    }
-                    face.leftEyeOpenProbability?.let {
-                        sb.append("  左眼睁开概率：${"%.2f".format(it)}\n")
-                    }
-                    face.rightEyeOpenProbability?.let {
-                        sb.append("  右眼睁开概率：${"%.2f".format(it)}\n")
-                    }
-                    sb.append("\n")
-                }
-                tvResult.text = if (faces.isEmpty()) {
-                    "未检测到人脸"
-                } else {
-                    sb.toString()
-                }
-            }
-            .addOnFailureListener { e ->
-                tvResult.text = "检测失败：${e.message}"
-            }
+    private fun updateChatDisplay(tvChat: TextView, scrollChat: ScrollView) {
+        tvChat.text = chatManager.getDisplayText()
+        scrollChat.post { scrollChat.fullScroll(ScrollView.FOCUS_DOWN) }
     }
 }

@@ -39,6 +39,20 @@ MlkitDemo - 基于 Google ML Kit 的移动端机器学习实践项目
   - 人脸位置与边界框
   - 头部姿态、微笑、眼睛状态检测
 
+### 第五阶段：云端大模型
+- **Day 5**: [Google Gemini API 接入](docs/day5-gemini-api.md)
+  - Gemini API 依赖配置
+  - 云端大模型聊天
+  - API Key 获取与配置（保留文档，使用火山引擎替代实现）
+- **Day 6**: [火山引擎（豆包）API 接入 + 流式输出](docs/day6-volcano-streaming.md)
+  - 火山引擎 API 配置
+  - 流式输出（打字机效果）
+  - 国内稳定访问
+- **Day 7**: [火山引擎多轮对话上下文管理](docs/day7-volcano-context.md)
+  - 对话历史管理
+  - Token 裁剪策略
+  - 系统提示词配置
+
 ## 功能特性
 
 | 功能 | 依赖库 | 版本 |
@@ -46,6 +60,8 @@ MlkitDemo - 基于 Google ML Kit 的移动端机器学习实践项目
 | 中文 OCR | text-recognition-chinese | 16.0.1 |
 | 图像分类 | image-labeling | 17.0.9 |
 | 人脸检测 | face-detection | 16.1.7 |
+| Gemini 聊天（文档） | generativeai | 0.7.0 |
+| 火山引擎聊天 | OkHttp / Coroutines | 4.12.0 / 1.7.3 |
 
 - ✅ 纯 Kotlin 实现
 - ✅ 零 NDK / 零 C++

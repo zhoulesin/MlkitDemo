@@ -54,4 +54,10 @@ dependencies {
     implementation("com.google.mlkit:image-labeling:17.0.9")
     // 人脸检测
     implementation("com.google.mlkit:face-detection:16.1.7")
+    // Gemini API (保留文档，使用火山引擎替代)
+    //implementation("com.google.ai.client.generativeai:generativeai:0.7.0")
+    // 火山引擎 - OkHttp
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    // 火山引擎 - Kotlin Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 }
