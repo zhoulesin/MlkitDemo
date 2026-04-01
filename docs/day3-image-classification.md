@@ -11,82 +11,37 @@ dependencies {
 }
 ```
 
-## 3.2 布局更新
+## 3.2 项目结构
 
-添加图像分类按钮：
-
-```xml
-<Button
-    android:id="@+id/btn_classify_image"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:layout_marginTop="12dp"
-    android:text="识别图像内容"/>
+```
+app/src/main/java/com/cozyla/mlkitdemo/
+└── mlkit/
+    ├── GalleryHelper.kt          # 相册选择
+    ├── TextRecognitionHelper.kt   # 文本识别
+    └── ImageLabelingHelper.kt     # 图像分类
 ```
 
 ## 3.3 核心代码实现
 
-**MainActivity.kt - 图像分类部分：**
+**创建 mlkit/ImageLabelingHelper.kt：**
 
 ```kotlin
-package com.cozyla.mlkitdemo
+package com.cozyla.mlkitdemo.mlkit
 
-import android.content.Intent
 import android.graphics.Bitmap
-import android.net.Uri
-import android.os.Bundle
-import android.provider.MediaStore
-import android.widget.Button
-import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
+import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.label.ImageLabeling
 import com.google.mlkit.vision.label.defaults.ImageLabelerOptions
 
-class MainActivity : AppCompatActivity() {
+class ImageLabelingHelper {
 
-    private val requestCodeTextRecognition = 100
-    private val requestCodeImageClassification = 101
-    private lateinit var tvResult: TextView
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-
-        val btnRecognizeText = findViewById<Button>(R.id.btn_recognize_text)
-        val btnClassifyImage = findViewById<Button>(R.id.btn_classify_image)
-        tvResult = findViewById(R.id.tv_result)
-
-        btnRecognizeText.setOnClickListener {
-            openGallery(requestCodeTextRecognition)
-        }
-
-        btnClassifyImage.setOnClickListener {
-            openGallery(requestCodeImageClassification)
-        }
-    }
-
-    private fun openGallery(requestCode: Int) {
-        val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
-        startActivityForResult(intent, requestCode)
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (resultCode == RESULT_OK) {
-            val uri: Uri? = data?.data
-            uri?.let {
-                val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, it)
-                when (requestCode) {
-                    requestCodeTextRecognition -> recognizeText(bitmap)
-                    requestCodeImageClassification -> classifyImage(bitmap)
-                }
-            }
-        }
-    }
-
-    private fun classifyImage(bitmap: Bitmap) {
+    fun classifyImage(
+        bitmap: Bitmap,
+        onSuccess: (String) -> Unit,
+        onFailure: (Exception) -> Unit
+    ) {
         val labeler = ImageLabeling.getClient(ImageLabelerOptions.DEFAULT_OPTIONS)
-        val image = com.google.mlkit.vision.common.InputImage.fromBitmap(bitmap, 0)
+        val image = InputImage.fromBitmap(bitmap, 0)
 
         labeler.process(image)
             .addOnSuccessListener { labels ->
@@ -96,19 +51,83 @@ class MainActivity : AppCompatActivity() {
                     val confidence = label.confidence
                     sb.append("类别：$name，置信度：${"%.2f".format(confidence)}\n")
                 }
-                tvResult.text = if (sb.isEmpty()) {
-                    "未识别到内容"
-                } else {
-                    sb.toString()
-                }
+                onSuccess(if (sb.isEmpty()) "未识别到内容" else sb.toString())
             }
             .addOnFailureListener { e ->
-                tvResult.text = "识别失败：${e.message}"
+                onFailure(e)
             }
     }
+}
+```
 
-    private fun recognizeText(bitmap: Bitmap) {
-        // 同 Day 2 实现
+**MainActivity.kt 中的使用：**
+
+```kotlin
+package com.cozyla.mlkitdemo
+
+import android.content.Intent
+import android.graphics.Bitmap
+import android.os.Bundle
+import android.widget.Button
+import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+import com.cozyla.mlkitdemo.mlkit.GalleryHelper
+import com.cozyla.mlkitdemo.mlkit.TextRecognitionHelper
+import com.cozyla.mlkitdemo.mlkit.ImageLabelingHelper
+
+class MainActivity : AppCompatActivity() {
+
+    companion object {
+        private const val REQUEST_CODE_TEXT = 100
+        private const val REQUEST_CODE_IMAGE = 101
+    }
+
+    private lateinit var tvResult: TextView
+    private val galleryHelper by lazy { GalleryHelper(this) }
+    private val textRecognitionHelper by lazy { TextRecognitionHelper() }
+    private val imageLabelingHelper by lazy { ImageLabelingHelper() }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        tvResult = findViewById(R.id.tv_result)
+
+        findViewById<Button>(R.id.btn_recognize_text).setOnClickListener {
+            galleryHelper.openGallery(REQUEST_CODE_TEXT)
+        }
+
+        findViewById<Button>(R.id.btn_classify_image).setOnClickListener {
+            galleryHelper.openGallery(REQUEST_CODE_IMAGE)
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (resultCode != RESULT_OK) return
+
+        val bitmap = galleryHelper.getBitmap(data) ?: return
+
+        when (requestCode) {
+            REQUEST_CODE_TEXT -> processText(bitmap)
+            REQUEST_CODE_IMAGE -> processImage(bitmap)
+        }
+    }
+
+    private fun processText(bitmap: Bitmap) {
+        textRecognitionHelper.recognizeText(
+            bitmap = bitmap,
+            onSuccess = { tvResult.text = it },
+            onFailure = { tvResult.text = "识别失败：${it.message}" }
+        )
+    }
+
+    private fun processImage(bitmap: Bitmap) {
+        imageLabelingHelper.classifyImage(
+            bitmap = bitmap,
+            onSuccess = { tvResult.text = it },
+            onFailure = { tvResult.text = "识别失败：${it.message}" }
+        )
     }
 }
 ```
@@ -119,45 +138,19 @@ class MainActivity : AppCompatActivity() {
 - **置信度**：0.0 - 1.0，越高越准确
 - **本地模型**：首次运行时自动下载，后续离线使用
 
-## 3.5 完整依赖配置
-
-最终 `app/build.gradle.kts` 中的 dependencies：
-
-```kotlin
-dependencies {
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.appcompat)
-    implementation(libs.material)
-    implementation(libs.androidx.activity)
-    implementation(libs.androidx.constraintlayout)
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
-
-    // ML Kit - 中文文本识别
-    implementation("com.google.mlkit:text-recognition-chinese:16.0.1")
-    // ML Kit - 图像分类
-    implementation("com.google.mlkit:image-labeling:17.0.9")
-}
-```
-
-## 3.6 Claude Code 快速实现提示词
-
-将以下提示词复制给 Claude Code 即可自动实现图像分类功能：
+## 3.5 Claude Code 快速实现提示词
 
 ```
 在这个 Android 项目中实现 ML Kit 图像分类功能：
 
-1. 在 app/build.gradle.kts 中添加依赖：
-   implementation("com.google.mlkit:image-labeling:17.0.9")
+1. 创建 mlkit/ImageLabelingHelper.kt：
+   - 封装图像分类逻辑
+   - 使用回调 onSuccess/onFailure 返回结果
+   - 输出类别名称和置信度
 
-2. 在 activity_main.xml 中添加图像分类按钮，id 为 btn_classify_image
-
-3. 在 MainActivity.kt 中：
-   - 添加 import：com.google.mlkit.vision.label.*
-   - 添加请求码 requestCodeImageClassification = 101
-   - 在 onCreate 中绑定按钮并设置点击事件打开相册
-   - 在 onActivityResult 中添加图像分类分支
-   - 实现 classifyImage() 方法，使用 ImageLabelerOptions.DEFAULT_OPTIONS，输出类别名称和置信度
-```
+2. 在 MainActivity.kt 中：
+   - 添加 ImageLabelingHelper 实例
+   - 添加图像分类按钮点击事件
+   - 在 onActivityResult 中添加处理分支
+   - 实现 processImage() 方法调用 Helper
 ```

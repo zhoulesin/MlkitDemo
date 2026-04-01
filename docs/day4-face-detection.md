@@ -11,87 +11,36 @@ dependencies {
 }
 ```
 
-## 4.2 布局更新
+## 4.2 项目结构
 
-添加人脸检测按钮：
-
-```xml
-<Button
-    android:id="@+id/btn_detect_face"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:layout_marginTop="12dp"
-    android:text="检测人脸"/>
+```
+app/src/main/java/com/cozyla/mlkitdemo/
+└── mlkit/
+    ├── GalleryHelper.kt          # 相册选择
+    ├── TextRecognitionHelper.kt   # 文本识别
+    ├── ImageLabelingHelper.kt     # 图像分类
+    └── FaceDetectionHelper.kt     # 人脸检测
 ```
 
 ## 4.3 核心代码实现
 
-**MainActivity.kt - 人脸检测部分：**
+**创建 mlkit/FaceDetectionHelper.kt：**
 
 ```kotlin
-package com.cozyla.mlkitdemo
+package com.cozyla.mlkitdemo.mlkit
 
-import android.content.Intent
 import android.graphics.Bitmap
-import android.net.Uri
-import android.os.Bundle
-import android.provider.MediaStore
-import android.widget.Button
-import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
+import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetectorOptions
 
-class MainActivity : AppCompatActivity() {
+class FaceDetectionHelper {
 
-    private val requestCodeTextRecognition = 100
-    private val requestCodeImageClassification = 101
-    private val requestCodeFaceDetection = 102
-    private lateinit var tvResult: TextView
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-
-        val btnRecognizeText = findViewById<Button>(R.id.btn_recognize_text)
-        val btnClassifyImage = findViewById<Button>(R.id.btn_classify_image)
-        val btnDetectFace = findViewById<Button>(R.id.btn_detect_face)
-        tvResult = findViewById(R.id.tv_result)
-
-        btnRecognizeText.setOnClickListener {
-            openGallery(requestCodeTextRecognition)
-        }
-
-        btnClassifyImage.setOnClickListener {
-            openGallery(requestCodeImageClassification)
-        }
-
-        btnDetectFace.setOnClickListener {
-            openGallery(requestCodeFaceDetection)
-        }
-    }
-
-    private fun openGallery(requestCode: Int) {
-        val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
-        startActivityForResult(intent, requestCode)
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (resultCode == RESULT_OK) {
-            val uri: Uri? = data?.data
-            uri?.let {
-                val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, it)
-                when (requestCode) {
-                    requestCodeTextRecognition -> recognizeText(bitmap)
-                    requestCodeImageClassification -> classifyImage(bitmap)
-                    requestCodeFaceDetection -> detectFace(bitmap)
-                }
-            }
-        }
-    }
-
-    private fun detectFace(bitmap: Bitmap) {
+    fun detectFace(
+        bitmap: Bitmap,
+        onSuccess: (String) -> Unit,
+        onFailure: (Exception) -> Unit
+    ) {
         val options = FaceDetectorOptions.Builder()
             .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
             .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
@@ -99,7 +48,7 @@ class MainActivity : AppCompatActivity() {
             .build()
 
         val detector = FaceDetection.getClient(options)
-        val image = com.google.mlkit.vision.common.InputImage.fromBitmap(bitmap, 0)
+        val image = InputImage.fromBitmap(bitmap, 0)
 
         detector.process(image)
             .addOnSuccessListener { faces ->
@@ -108,38 +57,114 @@ class MainActivity : AppCompatActivity() {
                 for ((index, face) in faces.withIndex()) {
                     sb.append("人脸 ${index + 1}：\n")
                     sb.append("  边界：${face.boundingBox}\n")
-                    
+
                     face.headEulerAngleY?.let { sb.append("  左右转头角度：${"%.1f".format(it)}°\n") }
                     face.headEulerAngleZ?.let { sb.append("  上下点头角度：${"%.1f".format(it)}°\n") }
-                    
-                    face.smilingProbability?.let { 
-                        sb.append("  微笑概率：${"%.2f".format(it)}\n") 
+
+                    face.smilingProbability?.let {
+                        sb.append("  微笑概率：${"%.2f".format(it)}\n")
                     }
-                    face.leftEyeOpenProbability?.let { 
-                        sb.append("  左眼睁开概率：${"%.2f".format(it)}\n") 
+                    face.leftEyeOpenProbability?.let {
+                        sb.append("  左眼睁开概率：${"%.2f".format(it)}\n")
                     }
-                    face.rightEyeOpenProbability?.let { 
-                        sb.append("  右眼睁开概率：${"%.2f".format(it)}\n") 
+                    face.rightEyeOpenProbability?.let {
+                        sb.append("  右眼睁开概率：${"%.2f".format(it)}\n")
                     }
                     sb.append("\n")
                 }
-                tvResult.text = if (faces.isEmpty()) {
-                    "未检测到人脸"
-                } else {
-                    sb.toString()
-                }
+                onSuccess(if (faces.isEmpty()) "未检测到人脸" else sb.toString())
             }
             .addOnFailureListener { e ->
-                tvResult.text = "检测失败：${e.message}"
+                onFailure(e)
             }
     }
+}
+```
 
-    private fun classifyImage(bitmap: Bitmap) {
-        // 同 Day 3 实现
+**MainActivity.kt 中的使用：**
+
+```kotlin
+package com.cozyla.mlkitdemo
+
+import android.content.Intent
+import android.graphics.Bitmap
+import android.os.Bundle
+import android.widget.Button
+import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+import com.cozyla.mlkitdemo.mlkit.GalleryHelper
+import com.cozyla.mlkitdemo.mlkit.TextRecognitionHelper
+import com.cozyla.mlkitdemo.mlkit.ImageLabelingHelper
+import com.cozyla.mlkitdemo.mlkit.FaceDetectionHelper
+
+class MainActivity : AppCompatActivity() {
+
+    companion object {
+        private const val REQUEST_CODE_TEXT = 100
+        private const val REQUEST_CODE_IMAGE = 101
+        private const val REQUEST_CODE_FACE = 102
     }
 
-    private fun recognizeText(bitmap: Bitmap) {
-        // 同 Day 2 实现
+    private lateinit var tvResult: TextView
+    private val galleryHelper by lazy { GalleryHelper(this) }
+    private val textRecognitionHelper by lazy { TextRecognitionHelper() }
+    private val imageLabelingHelper by lazy { ImageLabelingHelper() }
+    private val faceDetectionHelper by lazy { FaceDetectionHelper() }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        tvResult = findViewById(R.id.tv_result)
+
+        findViewById<Button>(R.id.btn_recognize_text).setOnClickListener {
+            galleryHelper.openGallery(REQUEST_CODE_TEXT)
+        }
+
+        findViewById<Button>(R.id.btn_classify_image).setOnClickListener {
+            galleryHelper.openGallery(REQUEST_CODE_IMAGE)
+        }
+
+        findViewById<Button>(R.id.btn_detect_face).setOnClickListener {
+            galleryHelper.openGallery(REQUEST_CODE_FACE)
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (resultCode != RESULT_OK) return
+
+        val bitmap = galleryHelper.getBitmap(data) ?: return
+
+        when (requestCode) {
+            REQUEST_CODE_TEXT -> processText(bitmap)
+            REQUEST_CODE_IMAGE -> processImage(bitmap)
+            REQUEST_CODE_FACE -> processFace(bitmap)
+        }
+    }
+
+    private fun processText(bitmap: Bitmap) {
+        textRecognitionHelper.recognizeText(
+            bitmap = bitmap,
+            onSuccess = { tvResult.text = it },
+            onFailure = { tvResult.text = "识别失败：${it.message}" }
+        )
+    }
+
+    private fun processImage(bitmap: Bitmap) {
+        imageLabelingHelper.classifyImage(
+            bitmap = bitmap,
+            onSuccess = { tvResult.text = it },
+            onFailure = { tvResult.text = "识别失败：${it.message}" }
+        )
+    }
+
+    private fun processFace(bitmap: Bitmap) {
+        faceDetectionHelper.detectFace(
+            bitmap = bitmap,
+            onSuccess = { tvResult.text = it },
+            onFailure = { tvResult.text = "检测失败：${it.message}" }
+        )
     }
 }
 ```
@@ -157,46 +182,20 @@ class MainActivity : AppCompatActivity() {
   - `CLASSIFICATION_MODE_NONE` - 不分类
   - `CLASSIFICATION_MODE_ALL` - 微笑、眼睛状态分类
 
-## 4.5 完整依赖配置
-
-最终 `app/build.gradle.kts` 中的 dependencies：
-
-```kotlin
-dependencies {
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.appcompat)
-    implementation(libs.material)
-    implementation(libs.androidx.activity)
-    implementation(libs.androidx.constraintlayout)
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
-
-    // ML Kit - 中文文本识别
-    implementation("com.google.mlkit:text-recognition-chinese:16.0.1")
-    // ML Kit - 图像分类
-    implementation("com.google.mlkit:image-labeling:17.0.9")
-    // ML Kit - 人脸检测
-    implementation("com.google.mlkit:face-detection:16.1.7")
-}
-```
-
-## 4.6 Claude Code 快速实现提示词
-
-将以下提示词复制给 Claude Code 即可自动实现人脸检测功能：
+## 4.5 Claude Code 快速实现提示词
 
 ```
 在这个 Android 项目中实现 ML Kit 人脸检测功能：
 
-1. 在 app/build.gradle.kts 中添加依赖：
-   implementation("com.google.mlkit:face-detection:16.1.7")
+1. 创建 mlkit/FaceDetectionHelper.kt：
+   - 封装人脸检测逻辑
+   - 使用精确模式、检测所有地标和分类
+   - 使用回调 onSuccess/onFailure 返回结果
+   - 输出人脸数量、边界框、头部角度、微笑概率、眼睛状态
 
-2. 在 activity_main.xml 中添加人脸检测按钮，id 为 btn_detect_face
-
-3. 在 MainActivity.kt 中：
-   - 添加 import：com.google.mlkit.vision.face.*
-   - 添加请求码 requestCodeFaceDetection = 102
-   - 在 onCreate 中绑定按钮并设置点击事件打开相册
-   - 在 onActivityResult 中添加人脸检测分支
-   - 实现 detectFace() 方法，使用精确模式、检测所有地标和分类，输出人脸数量、边界框、头部角度、微笑概率、眼睛状态
+2. 在 MainActivity.kt 中：
+   - 添加 FaceDetectionHelper 实例
+   - 添加人脸检测按钮点击事件
+   - 在 onActivityResult 中添加处理分支
+   - 实现 processFace() 方法调用 Helper
 ```
