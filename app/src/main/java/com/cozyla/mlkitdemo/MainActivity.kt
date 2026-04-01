@@ -10,6 +10,8 @@ import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.cozyla.mlkitdemo.chat.ChatManager
+import com.cozyla.mlkitdemo.chat.VolcanoApiHelper
 import com.cozyla.mlkitdemo.mlkit.FaceDetectionHelper
 import com.cozyla.mlkitdemo.mlkit.GalleryHelper
 import com.cozyla.mlkitdemo.mlkit.ImageLabelingHelper
@@ -29,6 +31,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private lateinit var tvResult: TextView
+    private lateinit var tvChat: TextView
+    private lateinit var scrollChat: ScrollView
     private lateinit var volcanoApi: VolcanoApiHelper
     private lateinit var chatManager: ChatManager
 
@@ -62,9 +66,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun initViews() {
         tvResult = findViewById(R.id.tv_result)
+        tvChat = findViewById(R.id.tv_chat)
+        scrollChat = findViewById(R.id.scroll_chat)
         val etMessage = findViewById<EditText>(R.id.et_message)
-        val tvChat = findViewById<TextView>(R.id.tv_chat)
-        val scrollChat = findViewById<ScrollView>(R.id.scroll_chat)
 
         findViewById<Button>(R.id.btn_recognize_text).setOnClickListener {
             galleryHelper.openGallery(REQUEST_CODE_TEXT)
@@ -81,14 +85,14 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btn_send).setOnClickListener {
             val message = etMessage.text.toString()
             if (message.isNotEmpty()) {
-                sendMessage(message, tvChat, scrollChat)
+                sendMessage(message)
                 etMessage.text.clear()
             }
         }
 
         findViewById<Button>(R.id.btn_clear).setOnClickListener {
             chatManager.clear()
-            updateChatDisplay(tvChat, scrollChat)
+            updateChatDisplay()
         }
     }
 
@@ -129,30 +133,27 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    private fun sendMessage(message: String, tvChat: TextView, scrollChat: ScrollView) {
+    private fun sendMessage(message: String) {
         chatManager.addMessage(role = "user", content = message)
-        updateChatDisplay(tvChat, scrollChat)
+        updateChatDisplay()
 
         lifecycleScope.launch {
             try {
-                val apiMessages = chatManager.getApiMessages().map {
-                    mapOf("role" to it.role, "content" to it.content)
-                }
-
+                val apiMessages = chatManager.getApiMessages()
                 val aiResponse = volcanoApi.chatNonStream(apiMessages)
                 chatManager.addMessage(role = "assistant", content = aiResponse)
-                updateChatDisplay(tvChat, scrollChat)
+                updateChatDisplay()
 
             } catch (e: Exception) {
                 Log.e(TAG, "聊天请求异常", e)
                 val errorMsg = "出错了：${e.javaClass.simpleName}\n${e.message}\n\n请查看 Logcat 获取详细信息"
                 chatManager.addMessage(role = "assistant", content = errorMsg)
-                updateChatDisplay(tvChat, scrollChat)
+                updateChatDisplay()
             }
         }
     }
 
-    private fun updateChatDisplay(tvChat: TextView, scrollChat: ScrollView) {
+    private fun updateChatDisplay() {
         tvChat.text = chatManager.getDisplayText()
         scrollChat.post { scrollChat.fullScroll(ScrollView.FOCUS_DOWN) }
     }

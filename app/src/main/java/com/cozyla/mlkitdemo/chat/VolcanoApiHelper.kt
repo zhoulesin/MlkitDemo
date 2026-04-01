@@ -1,4 +1,4 @@
-package com.cozyla.mlkitdemo
+package com.cozyla.mlkitdemo.chat
 
 import android.util.Log
 import com.cozyla.mlkitdemo.network.HttpClient
@@ -34,7 +34,7 @@ class VolcanoApiHelper(
     /**
      * 非流式聊天
      */
-    suspend fun chatNonStream(messages: List<Map<String, String>>): String = withContext(Dispatchers.IO) {
+    suspend fun chatNonStream(messages: List<ChatMessage>): String = withContext(Dispatchers.IO) {
         RetryHelper.executeWithRetry(
             maxRetries = maxRetries,
             retryDelayMs = retryDelayMs
@@ -46,7 +46,7 @@ class VolcanoApiHelper(
     /**
      * 执行实际的非流式请求
      */
-    private fun doChatNonStreamRequest(messages: List<Map<String, String>>): String {
+    private fun doChatNonStreamRequest(messages: List<ChatMessage>): String {
         Log.d(TAG, "=== 开始请求 ===")
         Log.d(TAG, "URL: $baseUrl")
         Log.d(TAG, "Model: $model")
@@ -79,7 +79,7 @@ class VolcanoApiHelper(
     /**
      * 流式聊天
      */
-    fun chatStream(messages: List<Map<String, String>>): Flow<String> = flow {
+    fun chatStream(messages: List<ChatMessage>): Flow<String> = flow {
         RetryHelper.executeWithRetry(
             maxRetries = maxRetries,
             retryDelayMs = retryDelayMs
@@ -92,7 +92,7 @@ class VolcanoApiHelper(
      * 执行实际的流式请求
      */
     private suspend fun doChatStreamRequest(
-        messages: List<Map<String, String>>,
+        messages: List<ChatMessage>,
         flowCollector: kotlinx.coroutines.flow.FlowCollector<String>
     ) {
         Log.d(TAG, "=== 开始流式请求 ===")
@@ -133,14 +133,14 @@ class VolcanoApiHelper(
     /**
      * 构建聊天请求 JSON
      */
-    private fun buildChatRequest(messages: List<Map<String, String>>, stream: Boolean): JSONObject {
+    private fun buildChatRequest(messages: List<ChatMessage>, stream: Boolean): JSONObject {
         return JSONObject().apply {
             put("model", model)
             put("stream", stream)
             put("messages", JSONArray(messages.map { msg ->
                 JSONObject().apply {
-                    put("role", msg["role"])
-                    put("content", msg["content"])
+                    put("role", msg.role)
+                    put("content", msg.content)
                 }
             }))
         }

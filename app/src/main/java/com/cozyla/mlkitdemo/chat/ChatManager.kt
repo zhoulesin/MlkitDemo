@@ -1,4 +1,4 @@
-package com.cozyla.mlkitdemo
+package com.cozyla.mlkitdemo.chat
 
 data class ChatMessage(
     val role: String,
